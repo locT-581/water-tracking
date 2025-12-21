@@ -1,0 +1,59 @@
+# Flutter Native Splash Configuration
+# Run: flutter pub run flutter_native_splash:create
+
+flutter_native_splash:
+  # Splash screen background color (Deep Ocean from design system)
+  color: "#001220"
+  
+  # Splash screen image (centered)
+  # Replace with actual logo when ready
+  image: assets/splash/logo.png
+  
+  # Image size (default is 100, which is 100px)
+  android_12:
+    image: assets/splash/logo.png
+    color: "#001220"
+    icon_background_color: "#2AF598"
+  
+  # Branding mode (show branding image at bottom)
+  branding: assets/splash/branding.png
+  branding_mode: bottom
+  
+  # Color of image in dark mode
+  color_dark: "#001220"
+  image_dark: assets/splash/logo.png
+  branding_dark: assets/splash/branding.png
+  
+  # iOS specific
+  ios: true
+  
+  # Android specific
+  android: true
+  
+  # Web specific
+  web: true
+  web_image_mode: center
+  
+  # Fullscreen mode
+  fullscreen: true
+  
+  # Info.plist properties (iOS)
+  info_plist_files:
+    - 'ios/Runner/Info.plist'
+
+# PLACEHOLDER IMAGES:
+# Create these placeholder files until designer provides final assets:
+#
+# 1. assets/splash/logo.png (200x200)
+#    - Water drop icon with gradient
+#    - Centered on transparent background
+#
+# 2. assets/splash/branding.png (200x50)
+#    - "SmartHydro" text with slogan
+#    - Or just app name
+#
+# Quick placeholder idea:
+# - Use a simple circle with gradient background
+# - Add water drop emoji 💧 as temporary icon
+# - Add app name text at bottom
+

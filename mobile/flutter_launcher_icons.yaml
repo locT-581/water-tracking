@@ -1,0 +1,44 @@
+# Flutter Launcher Icons Configuration
+# Run: flutter pub run flutter_launcher_icons
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  web:
+    generate: true
+  
+  # Path to your icon file (1024x1024 recommended)
+  # Replace with actual icon when ready
+  image_path: "assets/icon/icon.png"
+  
+  # Adaptive icon for Android (API 26+)
+  adaptive_icon_foreground: "assets/icon/foreground.png"
+  adaptive_icon_background: "#2AF598" # Hydro Green
+  
+  # iOS specific
+  remove_alpha_ios: true
+  
+  # Web specific
+  web:
+    generate: true
+    image_path: "assets/icon/icon.png"
+    background_color: "#2AF598"
+    theme_color: "#009EFD"
+  
+  # Windows specific (if supporting Windows)
+  windows:
+    generate: false
+  
+  # macOS specific (if supporting macOS)
+  macos:
+    generate: false
+
+# NOTE: Create placeholder icon files:
+# - assets/icon/icon.png (1024x1024)
+# - assets/icon/foreground.png (432x432 with transparency)
+#
+# Or use simple colored circle as placeholder:
+# 1. Create 1024x1024 image with hydration gradient
+# 2. Add white water drop icon in center
+# 3. Save as PNG
+
