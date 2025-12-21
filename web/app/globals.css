@@ -1,0 +1,211 @@
+@import "tailwindcss";
+
+/* ======================================
+   SmartHydro Design System - Tailwind v4
+   ====================================== */
+
+@theme {
+  /* SmartHydro Brand Colors */
+  --color-hydro-start: #2AF598;
+  --color-hydro-end: #009EFD;
+  --color-deep-ocean: #051E3E;
+  --color-science: #651FFF;
+  --color-success: #00C853;
+  --color-warning: #FFD600;
+  --color-danger: #FF3D00;
+  --color-light-bg: #F0F8FF;
+  --color-dark-bg: #001220;
+
+  /* Shadcn/UI Semantic Colors */
+  --color-background: hsl(210 40% 98%);
+  --color-foreground: hsl(222.2 84% 4.9%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(222.2 84% 4.9%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(222.2 84% 4.9%);
+  --color-primary: hsl(199 98% 48%);
+  --color-primary-foreground: hsl(210 40% 98%);
+  --color-secondary: hsl(210 40% 96.1%);
+  --color-secondary-foreground: hsl(222.2 47.4% 11.2%);
+  --color-muted: hsl(210 40% 96.1%);
+  --color-muted-foreground: hsl(215.4 16.3% 46.9%);
+  --color-accent: hsl(210 40% 96.1%);
+  --color-accent-foreground: hsl(222.2 47.4% 11.2%);
+  --color-destructive: hsl(0 84.2% 60.2%);
+  --color-destructive-foreground: hsl(210 40% 98%);
+  --color-border: hsl(214.3 31.8% 91.4%);
+  --color-input: hsl(214.3 31.8% 91.4%);
+  --color-ring: hsl(199 98% 48%);
+
+  /* Typography */
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-heading: "Nunito", system-ui, sans-serif;
+
+  /* Border Radius - SmartHydro Fluid Design */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+  --radius-4xl: 2.5rem;
+  --radius-pill: 9999px;
+
+  /* Container */
+  --container-2xl: 1400px;
+
+  /* Animations */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+}
+
+/* Dark Mode Colors */
+@layer base {
+  .dark {
+    --color-background: hsl(222.2 84% 4.9%);
+    --color-foreground: hsl(210 40% 98%);
+    --color-card: hsl(222.2 84% 4.9%);
+    --color-card-foreground: hsl(210 40% 98%);
+    --color-popover: hsl(222.2 84% 4.9%);
+    --color-popover-foreground: hsl(210 40% 98%);
+    --color-primary: hsl(199 98% 48%);
+    --color-primary-foreground: hsl(222.2 47.4% 11.2%);
+    --color-secondary: hsl(217.2 32.6% 17.5%);
+    --color-secondary-foreground: hsl(210 40% 98%);
+    --color-muted: hsl(217.2 32.6% 17.5%);
+    --color-muted-foreground: hsl(215 20.2% 65.1%);
+    --color-accent: hsl(217.2 32.6% 17.5%);
+    --color-accent-foreground: hsl(210 40% 98%);
+    --color-destructive: hsl(0 62.8% 30.6%);
+    --color-destructive-foreground: hsl(210 40% 98%);
+    --color-border: hsl(217.2 32.6% 17.5%);
+    --color-input: hsl(217.2 32.6% 17.5%);
+    --color-ring: hsl(199 98% 48%);
+  }
+}
+
+/* Keyframes */
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+/* Base Styles */
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
+
+/* SmartHydro Custom Utilities */
+@layer utility {
+  .gradient-text {
+    background-image: linear-gradient(135deg, var(--color-hydro-start) 0%, var(--color-hydro-end) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .bg-hydro-gradient {
+    background-image: linear-gradient(135deg, var(--color-hydro-start) 0%, var(--color-hydro-end) 100%);
+  }
+
+  .glass {
+    background-color: rgb(255 255 255 / 0.7);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgb(255 255 255 / 0.2);
+  }
+
+  .glass-dark {
+    background-color: rgb(15 23 42 / 0.6);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgb(255 255 255 / 0.1);
+  }
+}
+
+/* Tiptap Editor Styles */
+@layer base {
+  .ProseMirror {
+    min-height: 300px;
+    outline: none;
+  }
+
+  .ProseMirror > * + * {
+    margin-top: 0.75em;
+  }
+
+  .ProseMirror ul,
+  .ProseMirror ol {
+    padding: 0 1rem;
+  }
+
+  .ProseMirror h1 {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 700;
+  }
+
+  .ProseMirror h2 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 700;
+  }
+
+  .ProseMirror h3 {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    font-weight: 700;
+  }
+
+  .ProseMirror code {
+    background-color: var(--color-muted);
+    padding: 0.125rem 0.25rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .ProseMirror pre {
+    background-color: var(--color-muted);
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+  }
+
+  .ProseMirror pre code {
+    background-color: transparent;
+    padding: 0;
+  }
+
+  .ProseMirror blockquote {
+    border-left: 4px solid var(--color-primary);
+    padding-left: 1rem;
+    font-style: italic;
+  }
+
+  .ProseMirror img {
+    border-radius: var(--radius-lg);
+    max-width: 100%;
+    height: auto;
+  }
+
+  .ProseMirror a {
+    color: var(--color-primary);
+    text-decoration: underline;
+  }
+}

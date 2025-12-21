@@ -1,0 +1,153 @@
+{
+  "app": {
+    "name": "SmartHydro",
+    "slogan": "Hydration tuned to your biology."
+  },
+  "common": {
+    "continue": "Continue",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "done": "Done",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "undo": "Undo"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "continue_with_google": "Continue with Google",
+    "continue_with_apple": "Continue with Apple",
+    "terms_agreement": "By continuing, you agree to our\nTerms of Service and Privacy Policy"
+  },
+  "onboarding": {
+    "gender_title": "You are?",
+    "male": "Male",
+    "female": "Female",
+    "birth_year_title": "Your birth year?",
+    "weight_title": "Your weight?",
+    "time_title": "Daily schedule",
+    "time_subtitle": "So we don't disturb you during sleep",
+    "wake_time": "Wake up time",
+    "sleep_time": "Bedtime",
+    "special_status": "Special status",
+    "special_status_subtitle": "Pregnant and breastfeeding women need more water",
+    "pregnant": "Pregnant",
+    "breastfeeding": "Breastfeeding",
+    "your_goal": "Your goal",
+    "ml_per_day": "ml / day",
+    "goal_will_adjust": "This goal will automatically adjust based on weather and your activity.",
+    "start": "Start!"
+  },
+  "home": {
+    "title": "Home",
+    "streak_days": "{count} days",
+    "goal_remaining": "Only {ml}ml left! Keep going!",
+    "goal_complete": "Awesome! You've reached your goal!",
+    "today": "Today",
+    "view_all": "View all",
+    "fact_of_day": "Fact of the day"
+  },
+  "logging": {
+    "title": "Log",
+    "beverage_type": "Beverage type",
+    "volume": "Volume",
+    "drink": "Drink {ml}ml",
+    "logged": "Logged +{ml}ml",
+    "hydration": "Hydration: {percent}%"
+  },
+  "beverages": {
+    "water": "Water",
+    "sparkling_water": "Sparkling Water",
+    "milk": "Milk",
+    "coconut_water": "Coconut Water",
+    "tea": "Tea",
+    "coffee": "Coffee",
+    "juice": "Juice",
+    "soda": "Soda",
+    "alcohol": "Alcohol",
+    "energy_drink": "Energy Drink",
+    "other": "Other"
+  },
+  "beverage_tips": {
+    "coffee": "Coffee causes mild dehydration, remember to drink more water!",
+    "tea": "Tea has a mild diuretic effect, add some water.",
+    "soda": "Soda contains lots of sugar, limit consumption!",
+    "alcohol": "⚠️ Alcohol causes severe dehydration!",
+    "energy_drink": "⚠️ High caffeine, drink in moderation!"
+  },
+  "analysis": {
+    "title": "Analysis",
+    "this_week": "This week",
+    "goal_achieved": "Goal achieved",
+    "beverage_breakdown": "Beverage breakdown",
+    "streak_calendar": "Streak calendar",
+    "insights": "Insights",
+    "better_than_last_week": "This week is {percent}% better than last week!"
+  },
+  "science_hub": {
+    "title": "Science Hub",
+    "all": "All",
+    "basic": "Basics",
+    "nutrition": "Nutrition",
+    "weight_loss": "Weight Loss",
+    "sports": "Sports",
+    "pregnancy": "Pregnancy",
+    "min_read": "{min} min read",
+    "sources": "References"
+  },
+  "settings": {
+    "title": "Settings",
+    "personalization": "Personalization",
+    "water_goal": "Water goal",
+    "schedule": "Schedule",
+    "reminders": "Reminders",
+    "gamification": "Gamification",
+    "my_puru": "My Puru",
+    "challenges": "Challenges",
+    "achievements": "Achievements",
+    "app_settings": "App",
+    "language": "Language",
+    "theme": "Theme",
+    "export_data": "Export data",
+    "other": "Other",
+    "help": "Help & FAQ",
+    "privacy": "Privacy Policy",
+    "about": "About SmartHydro"
+  },
+  "buddy": {
+    "title": "My Puru",
+    "skin_collection": "Skin collection",
+    "streak_days": "Streak days",
+    "points": "Points"
+  },
+  "challenges": {
+    "title": "Challenges",
+    "active": "Active",
+    "available": "Available",
+    "join": "Join",
+    "days": "{current} / {total} days",
+    "reward": "Reward"
+  },
+  "achievements": {
+    "title": "Achievements",
+    "unlocked": "Achievements unlocked",
+    "hydration": "Hydration",
+    "streak": "Streak",
+    "challenge": "Challenge",
+    "special": "Special"
+  },
+  "notifications": {
+    "reminder_direct": "Time to drink water.",
+    "reminder_health": "Have a sip for healthier skin.",
+    "reminder_exercise": "You've been sitting for a while, stand up and drink some water!",
+    "weather_hot": "It's hot today! We've added an extra glass to your goal to keep you energized!",
+    "post_workout": "Great workout! Drink some water to replenish!"
+  }
+}
+

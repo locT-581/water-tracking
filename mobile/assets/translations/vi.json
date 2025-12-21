@@ -1,0 +1,153 @@
+{
+  "app": {
+    "name": "SmartHydro",
+    "slogan": "Hydration tuned to your biology."
+  },
+  "common": {
+    "continue": "Tiếp tục",
+    "cancel": "Hủy",
+    "save": "Lưu",
+    "delete": "Xóa",
+    "edit": "Sửa",
+    "done": "Xong",
+    "ok": "OK",
+    "yes": "Có",
+    "no": "Không",
+    "loading": "Đang tải...",
+    "error": "Có lỗi xảy ra",
+    "retry": "Thử lại",
+    "undo": "Hoàn tác"
+  },
+  "auth": {
+    "login": "Đăng nhập",
+    "logout": "Đăng xuất",
+    "continue_with_google": "Tiếp tục với Google",
+    "continue_with_apple": "Tiếp tục với Apple",
+    "terms_agreement": "Bằng việc tiếp tục, bạn đồng ý với\nĐiều khoản sử dụng và Chính sách bảo mật"
+  },
+  "onboarding": {
+    "gender_title": "Bạn là?",
+    "male": "Nam",
+    "female": "Nữ",
+    "birth_year_title": "Năm sinh của bạn?",
+    "weight_title": "Cân nặng của bạn?",
+    "time_title": "Thời gian sinh hoạt",
+    "time_subtitle": "Để chúng tôi không làm phiền bạn vào giờ ngủ",
+    "wake_time": "Giờ thức dậy",
+    "sleep_time": "Giờ đi ngủ",
+    "special_status": "Trạng thái đặc biệt",
+    "special_status_subtitle": "Phụ nữ mang thai và cho con bú cần uống nhiều nước hơn",
+    "pregnant": "Đang mang thai",
+    "breastfeeding": "Đang cho con bú",
+    "your_goal": "Mục tiêu của bạn",
+    "ml_per_day": "ml / ngày",
+    "goal_will_adjust": "Mục tiêu này sẽ tự động điều chỉnh theo thời tiết và hoạt động của bạn.",
+    "start": "Bắt đầu!"
+  },
+  "home": {
+    "title": "Trang chủ",
+    "streak_days": "{count} ngày",
+    "goal_remaining": "Còn {ml}ml nữa thôi! Cố lên!",
+    "goal_complete": "Tuyệt vời! Bạn đã đạt mục tiêu!",
+    "today": "Hôm nay",
+    "view_all": "Xem tất cả",
+    "fact_of_day": "Sự thật trong ngày"
+  },
+  "logging": {
+    "title": "Ghi chép",
+    "beverage_type": "Loại đồ uống",
+    "volume": "Dung tích",
+    "drink": "Uống {ml}ml",
+    "logged": "Đã ghi +{ml}ml",
+    "hydration": "Hydration: {percent}%"
+  },
+  "beverages": {
+    "water": "Nước lọc",
+    "sparkling_water": "Nước có gas",
+    "milk": "Sữa",
+    "coconut_water": "Nước dừa",
+    "tea": "Trà",
+    "coffee": "Cà phê",
+    "juice": "Nước ép",
+    "soda": "Nước ngọt",
+    "alcohol": "Rượu/Bia",
+    "energy_drink": "Nước tăng lực",
+    "other": "Khác"
+  },
+  "beverage_tips": {
+    "coffee": "Cà phê làm bạn mất nước nhẹ, nhớ uống thêm nước lọc nhé!",
+    "tea": "Trà có tác dụng lợi tiểu nhẹ, hãy bổ sung thêm nước.",
+    "soda": "Nước ngọt chứa nhiều đường, hạn chế sử dụng nhé!",
+    "alcohol": "⚠️ Rượu bia gây mất nước nghiêm trọng!",
+    "energy_drink": "⚠️ Caffeine cao, uống có chừng mực!"
+  },
+  "analysis": {
+    "title": "Thống kê",
+    "this_week": "Tuần này",
+    "goal_achieved": "Đạt mục tiêu",
+    "beverage_breakdown": "Phân loại đồ uống",
+    "streak_calendar": "Lịch streak",
+    "insights": "Insights",
+    "better_than_last_week": "Tuần này tốt hơn tuần trước {percent}%!"
+  },
+  "science_hub": {
+    "title": "Science Hub",
+    "all": "Tất cả",
+    "basic": "Cơ bản",
+    "nutrition": "Dinh dưỡng",
+    "weight_loss": "Giảm cân",
+    "sports": "Thể thao",
+    "pregnancy": "Mang thai",
+    "min_read": "{min} phút đọc",
+    "sources": "Nguồn tham khảo"
+  },
+  "settings": {
+    "title": "Cài đặt",
+    "personalization": "Cá nhân hóa",
+    "water_goal": "Mục tiêu nước",
+    "schedule": "Giờ sinh hoạt",
+    "reminders": "Nhắc nhở",
+    "gamification": "Gamification",
+    "my_puru": "Puru của tôi",
+    "challenges": "Thử thách",
+    "achievements": "Thành tựu",
+    "app_settings": "Ứng dụng",
+    "language": "Ngôn ngữ",
+    "theme": "Giao diện",
+    "export_data": "Xuất dữ liệu",
+    "other": "Khác",
+    "help": "Trợ giúp & FAQ",
+    "privacy": "Chính sách bảo mật",
+    "about": "Về SmartHydro"
+  },
+  "buddy": {
+    "title": "Puru của tôi",
+    "skin_collection": "Bộ sưu tập Skin",
+    "streak_days": "Ngày streak",
+    "points": "Điểm"
+  },
+  "challenges": {
+    "title": "Thử thách",
+    "active": "Đang tham gia",
+    "available": "Có thể tham gia",
+    "join": "Tham gia",
+    "days": "{current} / {total} ngày",
+    "reward": "Phần thưởng"
+  },
+  "achievements": {
+    "title": "Thành tựu",
+    "unlocked": "Thành tựu đã mở",
+    "hydration": "Hydration",
+    "streak": "Streak",
+    "challenge": "Challenge",
+    "special": "Đặc biệt"
+  },
+  "notifications": {
+    "reminder_direct": "Đến giờ uống nước rồi.",
+    "reminder_health": "Uống một ngụm để da đẹp hơn nào.",
+    "reminder_exercise": "Bạn đã ngồi lâu rồi, đứng dậy uống nước nhé.",
+    "weather_hot": "Hôm nay trời đổ lửa, mình đã thêm 1 cốc nước vào mục tiêu giúp bạn không bị mệt nhé!",
+    "post_workout": "Tuyệt vời! Bạn vừa đốt cháy calo. Uống thêm nước để bù khoáng nào!"
+  }
+}
+
