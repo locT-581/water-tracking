@@ -1,10 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/theme/app_text_styles.dart';
+import '../../../../shared/theme/app_gradients.dart';
 import '../../../../app/router.dart';
+import '../../../gamification/presentation/widgets/puru/puru_widget.dart';
+import '../../../gamification/domain/models/mascot_models.dart';
+import '../../../gamification/domain/services/mascot_registry.dart';
+import '../../../gamification/domain/services/mascot_factory.dart';
+import '../../../gamification/presentation/providers/mascot_providers.dart';
+import '../../domain/entities/user_profile.dart';
+import '../providers/auth_providers.dart';
+import '../providers/onboarding_providers.dart';
+import '../widgets/onboarding_widgets.dart';
+import '../widgets/goal_reveal_dialog.dart';
 
+/// Onboarding Screen - Collects user profile data
+/// 
+/// Features:
+/// - 5 profile screens: Gender, Birth Year, Weight, Time, Special Status (female only)
+/// - Animated transitions and feedback
+/// - Puru mascot responds to user input
+/// - Saves data locally and calculates base goal
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -13,17 +34,13 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 }
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
-  final PageController _pageController = PageController();
-  int _currentPage = 0;
+  late PageController _pageController;
 
-  // Form data
-  String? _gender;
-  int _birthYear = 1990;
-  double _weight = 70;
-  TimeOfDay _wakeTime = const TimeOfDay(hour: 7, minute: 0);
-  TimeOfDay _sleepTime = const TimeOfDay(hour: 23, minute: 0);
-  bool _isPregnant = false;
-  bool _isBreastfeeding = false;
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
 
   @override
   void dispose() {
@@ -31,335 +48,220 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     super.dispose();
   }
 
-  void _nextPage() {
-    if (_currentPage < 4) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeOutCubic,
-      );
-    } else {
-      _completeOnboarding();
-    }
-  }
-
-  void _previousPage() {
-    if (_currentPage > 0) {
-      _pageController.previousPage(
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeOutCubic,
-      );
-    }
-  }
-
-  void _completeOnboarding() {
-    // TODO: Save user profile to Supabase and Isar
-    // Calculate and show base goal
-    final age = DateTime.now().year - _birthYear;
-    final baseGoal = _calculateBaseGoal(age, _weight);
-
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text('Mục tiêu của bạn'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: AppColors.hydroGradient,
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                '$baseGoal',
-                style: const TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'ml / ngày',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Mục tiêu này sẽ tự động điều chỉnh theo thời tiết và hoạt động của bạn.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.grey600),
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              context.go(AppRoutes.home);
-            },
-            child: const Text('Bắt đầu!'),
-          ),
-        ],
-      ),
+  void _animateToPage(int page) {
+    _pageController.animateToPage(
+      page,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
     );
   }
 
-  int _calculateBaseGoal(int age, double weightKg) {
-    if (age < 30) {
-      return (weightKg * 40).round();
-    } else if (age <= 55) {
-      return (weightKg * 35).round();
-    } else {
-      return (weightKg * 30).round();
+  Future<void> _completeOnboarding() async {
+    final controller = ref.read(onboardingControllerProvider.notifier);
+    final state = ref.read(onboardingControllerProvider);
+    
+    try {
+      final goal = await controller.saveAndComplete();
+      final formula = ref.read(formulaExplanationProvider);
+      
+      // Save selected mascot to active mascot provider
+      final selectedMascot = state.data.selectedMascot ?? MascotType.aquaAxo;
+      await ref.read(activeMascotProvider.notifier).setActiveMascot(selectedMascot);
+      
+      if (mounted) {
+        await GoalRevealDialog.show(
+          context,
+          goalMl: goal,
+          formulaExplanation: formula,
+          onStart: () {
+            // Invalidate the provider to refresh onboarding status
+            ref.invalidate(hasCompletedOnboardingProvider);
+            
+            // Small delay to ensure provider refresh
+            Future.microtask(() {
+              if (mounted) {
+                context.go(AppRoutes.home);
+              }
+            });
+          },
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('common.error'.tr()),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(onboardingControllerProvider);
+    final controller = ref.read(onboardingControllerProvider.notifier);
+
+    // Listen for page changes
+    ref.listen<OnboardingState>(onboardingControllerProvider, (prev, next) {
+      if (prev?.currentPage != next.currentPage) {
+        _animateToPage(next.currentPage);
+      }
+    });
+
     return Scaffold(
+      backgroundColor: AppColors.lightBackground,
       body: SafeArea(
         child: Column(
           children: [
-            // Progress indicator
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  if (_currentPage > 0)
-                    IconButton(
-                      onPressed: _previousPage,
-                      icon: const Icon(Icons.arrow_back),
-                    )
-                  else
-                    const SizedBox(width: 48),
-                  Expanded(
-                    child: LinearProgressIndicator(
-                      value: (_currentPage + 1) / 5,
-                      backgroundColor: AppColors.grey200,
-                      valueColor: const AlwaysStoppedAnimation(AppColors.hydroEnd),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                ],
-              ),
-            ),
-            // Pages
+            // Header with progress and back button
+            _buildHeader(state, controller),
+            
+            // Page content
             Expanded(
               child: PageView(
                 controller: _pageController,
                 physics: const NeverScrollableScrollPhysics(),
-                onPageChanged: (page) => setState(() => _currentPage = page),
+                onPageChanged: (page) => controller.goToPage(page),
                 children: [
                   _GenderPage(
-                    selected: _gender,
-                    onSelected: (gender) => setState(() => _gender = gender),
+                    selected: state.data.gender,
+                    onSelected: controller.setGender,
                   ),
                   _BirthYearPage(
-                    year: _birthYear,
-                    onChanged: (year) => setState(() => _birthYear = year),
+                    selectedYear: state.data.birthYear ?? 1990,
+                    onChanged: controller.setBirthYear,
                   ),
                   _WeightPage(
-                    weight: _weight,
-                    onChanged: (weight) => setState(() => _weight = weight),
+                    weight: state.data.weightKg ?? 65,
+                    onChanged: controller.setWeight,
                   ),
                   _TimePage(
-                    wakeTime: _wakeTime,
-                    sleepTime: _sleepTime,
-                    onWakeTimeChanged: (time) => setState(() => _wakeTime = time),
-                    onSleepTimeChanged: (time) => setState(() => _sleepTime = time),
+                    wakeHour: state.data.wakeTimeHour,
+                    wakeMinute: state.data.wakeTimeMinute,
+                    sleepHour: state.data.sleepTimeHour,
+                    sleepMinute: state.data.sleepTimeMinute,
+                    onWakeTimeChanged: controller.setWakeTime,
+                    onSleepTimeChanged: controller.setSleepTime,
                   ),
-                  if (_gender == 'female')
+                  if (state.data.gender == Gender.female)
                     _PregnancyPage(
-                      isPregnant: _isPregnant,
-                      isBreastfeeding: _isBreastfeeding,
-                      onPregnantChanged: (v) => setState(() => _isPregnant = v),
-                      onBreastfeedingChanged: (v) => setState(() => _isBreastfeeding = v),
-                    )
-                  else
-                    _SummaryPage(
-                      gender: _gender ?? '',
-                      birthYear: _birthYear,
-                      weight: _weight,
+                      isPregnant: state.data.isPregnant,
+                      isBreastfeeding: state.data.isBreastfeeding,
+                      onPregnantChanged: controller.setPregnant,
+                      onBreastfeedingChanged: controller.setBreastfeeding,
                     ),
+                  // Mascot Selection Page (always last)
+                  _MascotSelectionPage(
+                    selected: state.data.selectedMascot,
+                    onSelected: controller.setSelectedMascot,
+                  ),
                 ],
               ),
             ),
-            // Next button
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _canProceed() ? _nextPage : null,
-                  child: Text(_currentPage == 4 ? 'Hoàn tất' : 'Tiếp tục'),
-                ),
-              ),
-            ),
+            
+            // Bottom button
+            _buildBottomButton(state, controller),
           ],
         ),
       ),
     );
   }
 
-  bool _canProceed() {
-    switch (_currentPage) {
-      case 0:
-        return _gender != null;
-      default:
-        return true;
-    }
+  Widget _buildHeader(OnboardingState state, OnboardingController controller) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          // Back button - only show if not on first page
+          AnimatedOpacity(
+            opacity: state.currentPage > 0 ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 200),
+            child: IconButton(
+              onPressed: state.currentPage > 0
+                  ? () {
+                      HapticFeedback.lightImpact();
+                      controller.previousPage();
+                    }
+                  : null,
+              icon: const Icon(Icons.arrow_back_rounded),
+              color: AppColors.deepOcean,
+            ),
+          ),
+          
+          // Progress indicator
+          Expanded(
+            child: OnboardingProgress(
+              progress: state.progress,
+              currentPage: state.currentPage,
+              totalPages: state.totalPages,
+            ),
+          ),
+          
+          // Skip button (placeholder for alignment)
+          const SizedBox(width: 48),
+        ],
+      ),
+    );
   }
-}
 
-// Gender selection page
-class _GenderPage extends StatelessWidget {
-  final String? selected;
-  final ValueChanged<String> onSelected;
-
-  const _GenderPage({required this.selected, required this.onSelected});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildBottomButton(
+    OnboardingState state,
+    OnboardingController controller,
+  ) {
     return Padding(
       padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          const SizedBox(height: 32),
-          Text(
-            'Bạn là?',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 48),
-          Row(
-            children: [
-              Expanded(
-                child: _GenderCard(
-                  icon: Icons.male,
-                  label: 'Nam',
-                  isSelected: selected == 'male',
-                  onTap: () => onSelected('male'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _GenderCard(
-                  icon: Icons.female,
-                  label: 'Nữ',
-                  isSelected: selected == 'female',
-                  onTap: () => onSelected('female'),
-                ),
-              ),
-            ],
-          ),
-        ],
+      child: OnboardingButton(
+        label: state.isLastPage 
+            ? 'common.done'.tr() 
+            : 'common.continue'.tr(),
+        onPressed: state.canProceed
+            ? () {
+                HapticFeedback.mediumImpact();
+                if (state.isLastPage) {
+                  _completeOnboarding();
+                } else {
+                  controller.nextPage();
+                }
+              }
+            : null,
+        isLoading: state.isSaving,
       ),
     );
   }
 }
 
-class _GenderCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
+// ============== PAGE 1: GENDER ==============
 
-  const _GenderCard({
-    required this.icon,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
+class _GenderPage extends StatelessWidget {
+  final Gender? selected;
+  final ValueChanged<Gender> onSelected;
+
+  const _GenderPage({
+    required this.selected,
+    required this.onSelected,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.hydroEnd.withOpacity(0.1) : Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: isSelected ? AppColors.hydroEnd : AppColors.grey300,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              size: 64,
-              color: isSelected ? AppColors.hydroEnd : AppColors.grey500,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? AppColors.hydroEnd : AppColors.deepOcean,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Birth year page
-class _BirthYearPage extends StatelessWidget {
-  final int year;
-  final ValueChanged<int> onChanged;
-
-  const _BirthYearPage({required this.year, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
+    return OnboardingPageWrapper(
+      title: 'onboarding.gender_title'.tr(),
+      child: Row(
         children: [
-          const SizedBox(height: 32),
-          Text(
-            'Năm sinh của bạn?',
-            style: Theme.of(context).textTheme.headlineMedium,
+          Expanded(
+            child: GenderCard(
+              gender: Gender.male,
+              isSelected: selected == Gender.male,
+              onTap: () => onSelected(Gender.male),
+            ),
           ),
-          const SizedBox(height: 48),
-          SizedBox(
-            height: 200,
-            child: ListWheelScrollView.useDelegate(
-              itemExtent: 60,
-              perspective: 0.005,
-              diameterRatio: 1.5,
-              physics: const FixedExtentScrollPhysics(),
-              onSelectedItemChanged: (index) {
-                onChanged(1940 + index);
-              },
-              controller: FixedExtentScrollController(
-                initialItem: year - 1940,
-              ),
-              childDelegate: ListWheelChildBuilderDelegate(
-                builder: (context, index) {
-                  final itemYear = 1940 + index;
-                  final isSelected = itemYear == year;
-                  return Center(
-                    child: Text(
-                      '$itemYear',
-                      style: TextStyle(
-                        fontSize: isSelected ? 32 : 24,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isSelected ? AppColors.hydroEnd : AppColors.grey400,
-                      ),
-                    ),
-                  );
-                },
-                childCount: DateTime.now().year - 1940 + 1,
-              ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: GenderCard(
+              gender: Gender.female,
+              isSelected: selected == Gender.female,
+              onTap: () => onSelected(Gender.female),
             ),
           ),
         ],
@@ -368,52 +270,157 @@ class _BirthYearPage extends StatelessWidget {
   }
 }
 
-// Weight page
+// ============== PAGE 2: BIRTH YEAR ==============
+
+class _BirthYearPage extends StatelessWidget {
+  final int selectedYear;
+  final ValueChanged<int> onChanged;
+
+  const _BirthYearPage({
+    required this.selectedYear,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OnboardingPageWrapper(
+      title: 'onboarding.birth_year_title'.tr(),
+      child: Column(
+        children: [
+          // Puru with age feedback
+          _AgeFeedbackPuru(age: DateTime.now().year - selectedYear),
+          
+          const SizedBox(height: 32),
+          
+          // Year picker
+          Expanded(
+            child: YearPickerWheel(
+              selectedYear: selectedYear,
+              onChanged: onChanged,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AgeFeedbackPuru extends StatelessWidget {
+  final int age;
+
+  const _AgeFeedbackPuru({required this.age});
+
+  @override
+  Widget build(BuildContext context) {
+    // Puru hydration based on water needs (younger = more)
+    double hydration;
+    if (age < 30) {
+      hydration = 0.9;
+    } else if (age <= 55) {
+      hydration = 0.75;
+    } else {
+      hydration = 0.6;
+    }
+
+    return Column(
+      children: [
+        PuruWidget(
+          size: 100,
+          hydrationPercent: hydration,
+          showMessage: false,
+          showGlowEffect: false,
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.hydroEnd.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            age < 30 
+                ? 'Cơ thể cần nhiều nước!' 
+                : age <= 55 
+                    ? 'Cân bằng nước tốt' 
+                    : 'Uống nước đều đặn nhé',
+            style: AppTextStyles.labelMedium(color: AppColors.hydroEnd),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ============== PAGE 3: WEIGHT ==============
+
 class _WeightPage extends StatelessWidget {
   final double weight;
   final ValueChanged<double> onChanged;
 
-  const _WeightPage({required this.weight, required this.onChanged});
+  const _WeightPage({
+    required this.weight,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
+    return OnboardingPageWrapper(
+      title: 'onboarding.weight_title'.tr(),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(height: 32),
-          Text(
-            'Cân nặng của bạn?',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 48),
-          // Puru size indicator placeholder
-          Container(
-            width: 80 + (weight - 40) * 1.5,
-            height: 80 + (weight - 40) * 1.5,
-            decoration: BoxDecoration(
-              gradient: AppColors.hydroGradient,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.water_drop, color: Colors.white, size: 48),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            '${weight.round()} kg',
-            style: const TextStyle(
-              fontSize: 48,
-              fontWeight: FontWeight.bold,
-              color: AppColors.hydroEnd,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Slider(
-            value: weight,
-            min: 30,
-            max: 150,
-            divisions: 120,
-            activeColor: AppColors.hydroEnd,
+          WeightSlider(
+            weight: weight,
             onChanged: onChanged,
+            puruWidget: PuruWidget(
+              size: 120,
+              hydrationPercent: 0.7,
+              showMessage: false,
+              showGlowEffect: false,
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Goal preview
+          _GoalPreview(weightKg: weight),
+        ],
+      ),
+    );
+  }
+}
+
+class _GoalPreview extends StatelessWidget {
+  final double weightKg;
+
+  const _GoalPreview({required this.weightKg});
+
+  @override
+  Widget build(BuildContext context) {
+    // Approximate goal (assuming age 30)
+    final approxGoal = (weightKg * 35).round();
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: AppGradients.primary.scale(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.hydroEnd.withOpacity(0.2),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.water_drop_outlined,
+            color: AppColors.hydroEnd,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Khoảng ~$approxGoal ml/ngày',
+            style: AppTextStyles.labelLarge(color: AppColors.hydroEnd),
           ),
         ],
       ),
@@ -421,61 +428,111 @@ class _WeightPage extends StatelessWidget {
   }
 }
 
-// Wake/Sleep time page
+// ============== PAGE 4: TIME ==============
+
 class _TimePage extends StatelessWidget {
-  final TimeOfDay wakeTime;
-  final TimeOfDay sleepTime;
-  final ValueChanged<TimeOfDay> onWakeTimeChanged;
-  final ValueChanged<TimeOfDay> onSleepTimeChanged;
+  final int wakeHour;
+  final int wakeMinute;
+  final int sleepHour;
+  final int sleepMinute;
+  final void Function(int, int) onWakeTimeChanged;
+  final void Function(int, int) onSleepTimeChanged;
 
   const _TimePage({
-    required this.wakeTime,
-    required this.sleepTime,
+    required this.wakeHour,
+    required this.wakeMinute,
+    required this.sleepHour,
+    required this.sleepMinute,
     required this.onWakeTimeChanged,
     required this.onSleepTimeChanged,
   });
 
+  int get _activeHours {
+    final wake = wakeHour * 60 + wakeMinute;
+    var sleep = sleepHour * 60 + sleepMinute;
+    if (sleep < wake) sleep += 24 * 60;
+    return (sleep - wake) ~/ 60;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
+    return OnboardingPageWrapper(
+      title: 'onboarding.time_title'.tr(),
+      subtitle: 'onboarding.time_subtitle'.tr(),
       child: Column(
         children: [
+          // Active hours display
+          _ActiveHoursDisplay(hours: _activeHours),
+          
           const SizedBox(height: 32),
-          Text(
-            'Thời gian sinh hoạt',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Để chúng tôi không làm phiền bạn vào giờ ngủ',
-            style: TextStyle(color: AppColors.grey600),
-          ),
-          const SizedBox(height: 48),
-          _TimeSelector(
-            label: 'Giờ thức dậy',
-            icon: Icons.wb_sunny,
-            time: wakeTime,
+          
+          // Wake time
+          TimeSelector(
+            label: 'onboarding.wake_time'.tr(),
+            icon: Icons.wb_sunny_rounded,
+            hour: wakeHour,
+            minute: wakeMinute,
+            iconColor: Colors.orange,
             onTap: () async {
               final picked = await showTimePicker(
                 context: context,
-                initialTime: wakeTime,
+                initialTime: TimeOfDay(hour: wakeHour, minute: wakeMinute),
+                builder: (context, child) {
+                  return Theme(
+                    data: Theme.of(context).copyWith(
+                      colorScheme: Theme.of(context).colorScheme.copyWith(
+                        primary: AppColors.hydroEnd,
+                      ),
+                    ),
+                    child: child!,
+                  );
+                },
               );
-              if (picked != null) onWakeTimeChanged(picked);
+              if (picked != null) {
+                onWakeTimeChanged(picked.hour, picked.minute);
+              }
             },
           ),
-          const SizedBox(height: 24),
-          _TimeSelector(
-            label: 'Giờ đi ngủ',
-            icon: Icons.bedtime,
-            time: sleepTime,
+          
+          const SizedBox(height: 16),
+          
+          // Sleep time
+          TimeSelector(
+            label: 'onboarding.sleep_time'.tr(),
+            icon: Icons.bedtime_rounded,
+            hour: sleepHour,
+            minute: sleepMinute,
+            iconColor: Colors.indigo,
             onTap: () async {
               final picked = await showTimePicker(
                 context: context,
-                initialTime: sleepTime,
+                initialTime: TimeOfDay(hour: sleepHour, minute: sleepMinute),
+                builder: (context, child) {
+                  return Theme(
+                    data: Theme.of(context).copyWith(
+                      colorScheme: Theme.of(context).colorScheme.copyWith(
+                        primary: AppColors.hydroEnd,
+                      ),
+                    ),
+                    child: child!,
+                  );
+                },
               );
-              if (picked != null) onSleepTimeChanged(picked);
+              if (picked != null) {
+                onSleepTimeChanged(picked.hour, picked.minute);
+              }
             },
+          ),
+          
+          const Spacer(),
+          
+          // Puru sleeping
+          Opacity(
+            opacity: 0.7,
+            child: PuruMini(
+              size: 60,
+              hydrationPercent: 0.5,
+            ),
           ),
         ],
       ),
@@ -483,58 +540,41 @@ class _TimePage extends StatelessWidget {
   }
 }
 
-class _TimeSelector extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final TimeOfDay time;
-  final VoidCallback onTap;
+class _ActiveHoursDisplay extends StatelessWidget {
+  final int hours;
 
-  const _TimeSelector({
-    required this.label,
-    required this.icon,
-    required this.time,
-    required this.onTap,
-  });
+  const _ActiveHoursDisplay({required this.hours});
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.grey300),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: AppColors.hydroEnd),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: TextStyle(color: AppColors.grey600)),
-                Text(
-                  time.format(context),
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            const Icon(Icons.chevron_right),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [AppColors.cardShadow],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.schedule_rounded,
+            color: AppColors.hydroEnd,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$hours giờ hoạt động',
+            style: AppTextStyles.labelLarge(color: AppColors.deepOcean),
+          ),
+        ],
       ),
     );
   }
 }
 
-// Pregnancy page (only for female)
+// ============== PAGE 5: PREGNANCY (FEMALE ONLY) ==============
+
 class _PregnancyPage extends StatelessWidget {
   final bool isPregnant;
   final bool isBreastfeeding;
@@ -550,103 +590,295 @@ class _PregnancyPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
+    return OnboardingPageWrapper(
+      title: 'onboarding.special_status'.tr(),
+      subtitle: 'onboarding.special_status_subtitle'.tr(),
       child: Column(
         children: [
-          const SizedBox(height: 32),
-          Text(
-            'Trạng thái đặc biệt',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Phụ nữ mang thai và cho con bú cần uống nhiều nước hơn',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.grey600),
-          ),
-          const SizedBox(height: 48),
-          CheckboxListTile(
+          SpecialStatusTile(
+            title: 'onboarding.pregnant'.tr(),
+            subtitle: '+300ml/ngày',
             value: isPregnant,
-            onChanged: (v) => onPregnantChanged(v ?? false),
-            title: const Text('Đang mang thai'),
-            subtitle: const Text('+300ml/ngày'),
-            activeColor: AppColors.hydroEnd,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
+            onChanged: onPregnantChanged,
           ),
+          
           const SizedBox(height: 16),
-          CheckboxListTile(
+          
+          SpecialStatusTile(
+            title: 'onboarding.breastfeeding'.tr(),
+            subtitle: '+500ml/ngày',
             value: isBreastfeeding,
-            onChanged: (v) => onBreastfeedingChanged(v ?? false),
-            title: const Text('Đang cho con bú'),
-            subtitle: const Text('+500ml/ngày'),
-            activeColor: AppColors.hydroEnd,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
+            onChanged: onBreastfeedingChanged,
           ),
+          
+          // Extra goal display - animate in when selected
+          AnimatedSize(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            child: (isPregnant || isBreastfeeding)
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 24),
+                    child: _ExtraGoalDisplay(
+                      isPregnant: isPregnant,
+                      isBreastfeeding: isBreastfeeding,
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          
+          const Spacer(),
+          
+          // Supportive Puru - smaller to avoid overflow
+          PuruWidget(
+            size: 70,
+            hydrationPercent: 0.8,
+            showMessage: false,
+          ),
+          
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
 }
 
-// Summary page
-class _SummaryPage extends StatelessWidget {
-  final String gender;
-  final int birthYear;
-  final double weight;
+class _ExtraGoalDisplay extends StatelessWidget {
+  final bool isPregnant;
+  final bool isBreastfeeding;
 
-  const _SummaryPage({
-    required this.gender,
-    required this.birthYear,
-    required this.weight,
+  const _ExtraGoalDisplay({
+    required this.isPregnant,
+    required this.isBreastfeeding,
   });
 
+  int get _extraMl {
+    int extra = 0;
+    if (isPregnant) extra += 300;
+    if (isBreastfeeding) extra += 500;
+    return extra;
+  }
+
   @override
   Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: AppGradients.primary.scale(0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.hydroEnd.withOpacity(0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.add_rounded,
+              color: AppColors.hydroEnd,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '+$_extraMl ml',
+                style: AppTextStyles.titleLarge(color: AppColors.hydroEnd),
+              ),
+              Text(
+                'sẽ được thêm vào mục tiêu',
+                style: AppTextStyles.bodySmall(color: AppColors.grey600),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============== PAGE: MASCOT SELECTION ==============
+
+class _MascotSelectionPage extends StatelessWidget {
+  final MascotType? selected;
+  final ValueChanged<MascotType> onSelected;
+
+  const _MascotSelectionPage({
+    required this.selected,
+    required this.onSelected,
+  });
+
+  /// Launch mascots available for selection during onboarding
+  static const List<MascotType> _availableMascots = [
+    MascotType.aquaAxo,         // Classic Puru (default)
+    MascotType.celestialDrop,   // Celestial Drop
+    MascotType.liquidChibiBot,  // Chibi Bot
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    // Custom layout for mascot selection - more compact header
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
+          
+          // Compact title
           Text(
-            'Xác nhận thông tin',
-            style: Theme.of(context).textTheme.headlineMedium,
+            'onboarding.mascot_title'.tr(),
+            style: AppTextStyles.headlineSmall(),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 48),
-          _InfoRow(label: 'Giới tính', value: gender == 'male' ? 'Nam' : 'Nữ'),
-          _InfoRow(label: 'Năm sinh', value: '$birthYear'),
-          _InfoRow(label: 'Cân nặng', value: '${weight.round()} kg'),
+          
+          const SizedBox(height: 8),
+          
+          // Subtitle
+          Text(
+            'onboarding.mascot_subtitle'.tr(),
+            style: AppTextStyles.bodySmall(color: AppColors.grey600),
+            textAlign: TextAlign.center,
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Selected mascot preview with smooth size animation
+          AnimatedSize(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: selected != null
+                ? Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _CompactMascotPreview(type: selected!),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          
+          // Mascot cards - fixed height row
+          SizedBox(
+            height: 180,
+            child: Row(
+              children: _availableMascots.map((mascot) {
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: MascotSelectionCard(
+                      type: mascot,
+                      isSelected: selected == mascot,
+                      onTap: () => onSelected(mascot),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          
+          const Spacer(),
+          
+          // Info text - more compact
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.grey100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  color: AppColors.grey600,
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'onboarding.mascot_info'.tr(),
+                    style: AppTextStyles.caption(color: AppColors.grey600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
 }
 
-class _InfoRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _InfoRow({required this.label, required this.value});
+/// Compact preview of selected mascot with smooth animation
+class _CompactMascotPreview extends StatelessWidget {
+  final MascotType type;
+  
+  const _CompactMascotPreview({required this.type});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+    final info = MascotRegistry.getInfo(type);
+    final quote = info.quotes.isNotEmpty ? info.quotes.first : '';
+    
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: AppGradients.primary.scale(0.12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.hydroEnd.withOpacity(0.2),
+        ),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(color: AppColors.grey600)),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          // Small mascot preview
+          SizedBox(
+            width: 48,
+            height: 48,
+            child: MascotWidget(
+              type: type,
+              size: 48,
+              hydrationPercent: 0.9,
+            ),
+          ),
+          
+          const SizedBox(width: 12),
+          
+          // Quote - full display without ellipsis
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  info.nameVi,
+                  style: AppTextStyles.labelMedium(
+                    color: AppColors.hydroEnd,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  quote,
+                  style: AppTextStyles.bodySmall(
+                    color: AppColors.grey700,
+                  ),
+                  // No maxLines or overflow - show full quote
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 }
-

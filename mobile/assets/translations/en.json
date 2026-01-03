@@ -23,9 +23,22 @@
     "logout": "Logout",
     "continue_with_google": "Continue with Google",
     "continue_with_apple": "Continue with Apple",
-    "terms_agreement": "By continuing, you agree to our\nTerms of Service and Privacy Policy"
+    "try_without_account": "Try without account",
+    "or": "or",
+    "terms_agreement": "By continuing, you agree to our\nTerms of Service and Privacy Policy",
+    "guest_mode_banner": "You're using guest mode",
+    "link_account": "Link account",
+    "link_account_prompt_title": "Protect your data",
+    "link_account_prompt_message": "Link your account to sync data to cloud and keep it safe when switching phones.",
+    "link_account_later": "Later",
+    "link_account_now": "Link now"
   },
   "onboarding": {
+    "welcome_title": "Welcome! 👋",
+    "welcome_subtitle": "Let's set up your profile to calculate the right amount of water for you.",
+    "have_account": "I have an account",
+    "new_user": "Create new profile",
+    "sync_later_hint": "You can sign in later to sync your data",
     "gender_title": "You are?",
     "male": "Male",
     "female": "Female",
@@ -42,7 +55,12 @@
     "your_goal": "Your goal",
     "ml_per_day": "ml / day",
     "goal_will_adjust": "This goal will automatically adjust based on weather and your activity.",
-    "start": "Start!"
+    "weather": "Weather",
+    "activity": "Activity",
+    "start": "Start!",
+    "mascot_title": "Choose your companion! 💧",
+    "mascot_subtitle": "Your mascot will accompany and remind you to drink water every day",
+    "mascot_info": "You can change your mascot anytime in Settings"
   },
   "home": {
     "title": "Home",

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import '../shared/theme/app_theme.dart';
+import '../shared/widgets/toast_overlay.dart';
 import 'router.dart';
 
 class SmartHydroApp extends ConsumerWidget {
@@ -28,6 +29,13 @@ class SmartHydroApp extends ConsumerWidget {
 
       // Router
       routerConfig: router,
+      
+      // Toast overlay wrapper
+      builder: (context, child) {
+        return ToastOverlay(
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

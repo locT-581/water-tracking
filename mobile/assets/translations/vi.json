@@ -23,9 +23,22 @@
     "logout": "Đăng xuất",
     "continue_with_google": "Tiếp tục với Google",
     "continue_with_apple": "Tiếp tục với Apple",
-    "terms_agreement": "Bằng việc tiếp tục, bạn đồng ý với\nĐiều khoản sử dụng và Chính sách bảo mật"
+    "try_without_account": "Dùng thử ngay",
+    "or": "hoặc",
+    "terms_agreement": "Bằng việc tiếp tục, bạn đồng ý với\nĐiều khoản sử dụng và Chính sách bảo mật",
+    "guest_mode_banner": "Bạn đang dùng chế độ khách",
+    "link_account": "Liên kết tài khoản",
+    "link_account_prompt_title": "Bảo vệ dữ liệu của bạn",
+    "link_account_prompt_message": "Liên kết tài khoản để đồng bộ dữ liệu lên cloud và không bị mất khi đổi điện thoại.",
+    "link_account_later": "Để sau",
+    "link_account_now": "Liên kết ngay"
   },
   "onboarding": {
+    "welcome_title": "Chào mừng bạn! 👋",
+    "welcome_subtitle": "Hãy thiết lập hồ sơ để tính toán lượng nước phù hợp với bạn.",
+    "have_account": "Tôi đã có tài khoản",
+    "new_user": "Tạo hồ sơ mới",
+    "sync_later_hint": "Bạn có thể đăng nhập sau để đồng bộ dữ liệu",
     "gender_title": "Bạn là?",
     "male": "Nam",
     "female": "Nữ",
@@ -42,7 +55,12 @@
     "your_goal": "Mục tiêu của bạn",
     "ml_per_day": "ml / ngày",
     "goal_will_adjust": "Mục tiêu này sẽ tự động điều chỉnh theo thời tiết và hoạt động của bạn.",
-    "start": "Bắt đầu!"
+    "weather": "Thời tiết",
+    "activity": "Vận động",
+    "start": "Bắt đầu!",
+    "mascot_title": "Chọn người bạn đồng hành! 💧",
+    "mascot_subtitle": "Mascot sẽ đồng hành và nhắc nhở bạn uống nước mỗi ngày",
+    "mascot_info": "Bạn có thể thay đổi mascot bất cứ lúc nào trong phần Cài đặt"
   },
   "home": {
     "title": "Trang chủ",

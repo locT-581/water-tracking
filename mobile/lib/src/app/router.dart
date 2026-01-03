@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/constants/bhi_constants.dart';
+import '../core/services/guest_mode_service.dart';
+import '../shared/theme/app_colors.dart';
+import '../shared/theme/app_gradients.dart';
+import '../shared/widgets/toast_overlay.dart';
+import '../features/hydration/presentation/providers/hydration_providers.dart';
+import '../features/splash/presentation/screens/splash_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/onboarding_screen.dart';
 import '../features/auth/presentation/providers/auth_providers.dart';
@@ -9,6 +17,7 @@ import '../features/auth/domain/entities/user.dart';
 import '../features/hydration/presentation/screens/home_screen.dart';
 import '../features/hydration/presentation/screens/logging_screen.dart';
 import '../features/hydration/presentation/screens/analysis_screen.dart';
+import '../features/hydration/presentation/widgets/logging_bottom_sheet.dart';
 import '../features/science_hub/presentation/screens/science_hub_screen.dart';
 import '../features/science_hub/presentation/screens/article_detail_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
@@ -16,8 +25,6 @@ import '../features/gamification/presentation/screens/buddy_screen.dart';
 import '../features/gamification/presentation/screens/challenges_screen.dart';
 import '../features/gamification/presentation/screens/achievements_screen.dart';
 import '../features/gamification/presentation/screens/mascot_gallery_screen.dart';
-import '../features/gamification/presentation/widgets/puru/puru_showcase.dart';
-import '../features/gamification/presentation/widgets/puru_3d/puru_3d_comparison_showcase.dart';
 
 // Route names
 abstract class AppRoutes {
@@ -33,36 +40,48 @@ abstract class AppRoutes {
   static const String buddy = '/buddy';
   static const String challenges = '/challenges';
   static const String achievements = '/achievements';
-  static const String mascotGallery = '/mascot-gallery'; // Mascot Collection Gallery
-  static const String puruTest = '/puru-test'; // Dev route for testing Puru
-  static const String puru3DComparison = '/puru-3d-comparison'; // 3D Comparison Showcase
+  static const String mascotGallery = '/mascot-gallery';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
-  // Watch auth state for routing decisions
+  // Watch auth state and guest mode for routing decisions
   final authStatus = ref.watch(authStatusProvider);
   final hasCompletedOnboarding = ref.watch(hasCompletedOnboardingProvider);
+  final isGuestMode = ref.watch(guestModeNotifierProvider);
   
   return GoRouter(
-    // 🔧 DEV MODE: Change to AppRoutes.splash for production
-    initialLocation: AppRoutes.puru3DComparison,
+    initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
     
-    // Redirect logic based on auth state
+    // Redirect logic based on auth state and guest mode
     redirect: (context, state) {
       final isGoingToLogin = state.matchedLocation == AppRoutes.login;
       final isGoingToOnboarding = state.matchedLocation == AppRoutes.onboarding;
       final isGoingToSplash = state.matchedLocation == AppRoutes.splash;
       
-      // Dev routes - allow access
-      if (state.matchedLocation == AppRoutes.puruTest ||
-          state.matchedLocation == AppRoutes.puru3DComparison) {
+      // Allow splash screen to handle its own navigation
+      if (isGoingToSplash) {
         return null;
       }
       
-      // If not authenticated, go to login
+      // Guest mode - check onboarding status
+      if (isGuestMode) {
+        // If guest hasn't completed onboarding, force onboarding
+        if (!hasCompletedOnboarding) {
+          // Allow going to onboarding, redirect everything else to onboarding
+          return isGoingToOnboarding ? null : AppRoutes.onboarding;
+        }
+        
+        // Guest has completed onboarding - allow main app, block login/onboarding
+        if (isGoingToLogin || isGoingToOnboarding) {
+          return AppRoutes.home;
+        }
+        return null;
+      }
+      
+      // If not authenticated and not guest, go to login
       if (authStatus == AuthStatus.unauthenticated) {
-        return isGoingToLogin || isGoingToSplash ? null : AppRoutes.login;
+        return isGoingToLogin ? null : AppRoutes.login;
       }
       
       // If authenticated but not onboarded, go to onboarding
@@ -72,7 +91,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       
       // If authenticated and onboarded, prevent going back to login/onboarding
       if (authStatus == AuthStatus.authenticated && hasCompletedOnboarding) {
-        if (isGoingToLogin || isGoingToOnboarding || isGoingToSplash) {
+        if (isGoingToLogin || isGoingToOnboarding) {
           return AppRoutes.home;
         }
       }
@@ -85,16 +104,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.splash,
         builder: (context, state) => const SplashScreen(),
-      ),
-      
-      // 🧪 DEV: Puru showcase for testing mascot
-      GoRoute(
-        path: AppRoutes.puruTest,
-        builder: (context, state) => const PuruShowcase(),
-      ),
-      GoRoute(
-        path: AppRoutes.puru3DComparison,
-        builder: (context, state) => const Puru3DComparisonShowcase(),
       ),
 
       // Auth routes
@@ -186,35 +195,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.mascotGallery,
         builder: (context, state) => const MascotGalleryScreen(),
       ),
-      
-      // Dev/Test routes
-      GoRoute(
-        path: AppRoutes.puruTest,
-        builder: (context, state) => const PuruShowcase(),
-      ),
-      GoRoute(
-        path: AppRoutes.puru3DComparison,
-        builder: (context, state) => const Puru3DComparisonShowcase(),
-      ),
     ],
     errorBuilder: (context, state) => ErrorScreen(error: state.error),
   );
 });
-
-// Splash Screen placeholder
-class SplashScreen extends StatelessWidget {
-  const SplashScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    // TODO: Implement splash screen with auth check
-    return const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
-  }
-}
 
 // Main Shell with bottom navigation
 class MainShell extends StatelessWidget {
@@ -227,11 +211,172 @@ class MainShell extends StatelessWidget {
     return Scaffold(
       body: child,
       bottomNavigationBar: const MainBottomNavBar(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push(AppRoutes.log),
-        child: const Icon(Icons.water_drop),
-      ),
+      floatingActionButton: const _WaterFAB(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+    );
+  }
+}
+
+/// Animated water drop FAB with Quick Log support
+/// - Tap: Instantly log 250ml water (1-tap logging!)
+/// - Long press: Open full logging bottom sheet
+class _WaterFAB extends ConsumerStatefulWidget {
+  const _WaterFAB();
+
+  @override
+  ConsumerState<_WaterFAB> createState() => _WaterFABState();
+}
+
+class _WaterFABState extends ConsumerState<_WaterFAB> with TickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  
+  // For tap feedback animation
+  late AnimationController _tapController;
+  late Animation<double> _tapAnimation;
+  
+  // Quick log default settings
+  static const int _quickLogVolume = 250; // ml
+  static const BeverageType _quickLogBeverage = BeverageType.water;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Pulse animation (idle state)
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+    
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    
+    // Tap feedback animation
+    _tapController = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+    
+    _tapAnimation = Tween<double>(begin: 1.0, end: 0.9).animate(
+      CurvedAnimation(parent: _tapController, curve: Curves.easeOutCubic),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _tapController.dispose();
+    super.dispose();
+  }
+
+  /// Quick log: Instantly add 250ml water
+  Future<void> _quickLog() async {
+    // Haptic feedback
+    HapticFeedback.mediumImpact();
+    
+    // Play tap animation
+    await _tapController.forward();
+    await _tapController.reverse();
+    
+    // Capture notifier before async operation
+    final logsNotifier = ref.read(todayLogsProvider.notifier);
+    
+    try {
+      // Add log via provider
+      await logsNotifier.addLog(
+        beverageType: _quickLogBeverage,
+        volumeMl: _quickLogVolume,
+      );
+      
+      // Get last log for undo
+      final lastLog = logsNotifier.getLastLog();
+      
+      // Show success toast with undo
+      toast.success(
+        '+250ml nước 💧',
+        onUndo: lastLog != null 
+            ? () => logsNotifier.removeLog(lastLog.logId)
+            : null,
+      );
+    } catch (e) {
+      toast.error('Không thể ghi nhận. Thử lại sau.');
+    }
+  }
+  
+  /// Open full logging bottom sheet
+  void _openFullLogging() {
+    HapticFeedback.heavyImpact();
+    LoggingBottomSheet.show(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([_pulseAnimation, _tapAnimation]),
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _pulseAnimation.value * _tapAnimation.value,
+          child: child,
+        );
+      },
+      child: GestureDetector(
+        onTap: _quickLog,
+        onLongPress: _openFullLogging,
+        child: Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            gradient: AppGradients.primary,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.hydroEnd.withValues(alpha: 0.4),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Main icon
+              const Icon(
+                Icons.water_drop_rounded,
+                color: Colors.white,
+                size: 32,
+              ),
+              // Quick log badge (bottom-right)
+              Positioned(
+                right: 4,
+                bottom: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    '+250',
+                    style: TextStyle(
+                      color: AppColors.hydroEnd,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -244,38 +389,70 @@ class MainBottomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
 
-    return BottomAppBar(
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 8,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _NavItem(
-            icon: Icons.home_rounded,
-            label: 'Home',
-            isSelected: location == AppRoutes.home,
-            onTap: () => context.go(AppRoutes.home),
-          ),
-          _NavItem(
-            icon: Icons.bar_chart_rounded,
-            label: 'Analysis',
-            isSelected: location == AppRoutes.analysis,
-            onTap: () => context.go(AppRoutes.analysis),
-          ),
-          const SizedBox(width: 48), // Space for FAB
-          _NavItem(
-            icon: Icons.science_rounded,
-            label: 'Science',
-            isSelected: location == AppRoutes.scienceHub,
-            onTap: () => context.go(AppRoutes.scienceHub),
-          ),
-          _NavItem(
-            icon: Icons.settings_rounded,
-            label: 'Settings',
-            isSelected: location == AppRoutes.settings,
-            onTap: () => context.go(AppRoutes.settings),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
           ),
         ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: BottomAppBar(
+          elevation: 0,
+          color: Colors.transparent,
+          shape: const CircularNotchedRectangle(),
+          notchMargin: 8,
+          child: SizedBox(
+            height: 56,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _NavItem(
+                  icon: Icons.home_rounded,
+                  label: 'Trang chủ',
+                  isSelected: location == AppRoutes.home,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    context.go(AppRoutes.home);
+                  },
+                ),
+                _NavItem(
+                  icon: Icons.bar_chart_rounded,
+                  label: 'Thống kê',
+                  isSelected: location == AppRoutes.analysis,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    context.go(AppRoutes.analysis);
+                  },
+                ),
+                const SizedBox(width: 64), // Space for FAB
+                _NavItem(
+                  icon: Icons.auto_stories_rounded,
+                  label: 'Kiến thức',
+                  isSelected: location == AppRoutes.scienceHub,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    context.go(AppRoutes.scienceHub);
+                  },
+                ),
+                _NavItem(
+                  icon: Icons.settings_rounded,
+                  label: 'Cài đặt',
+                  isSelected: location == AppRoutes.settings,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    context.go(AppRoutes.settings);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -296,24 +473,35 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = isSelected ? theme.primaryColor : theme.unselectedWidgetColor;
-
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color),
-            const SizedBox(height: 4),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: isSelected 
+                    ? AppColors.hydroEnd.withValues(alpha: 0.1)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? AppColors.hydroEnd : AppColors.grey400,
+                size: 22,
+              ),
+            ),
             Text(
               label,
               style: TextStyle(
-                color: color,
-                fontSize: 12,
+                color: isSelected ? AppColors.hydroEnd : AppColors.grey500,
+                fontSize: 9,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),

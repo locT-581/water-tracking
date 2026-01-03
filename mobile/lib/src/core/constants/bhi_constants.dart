@@ -2,6 +2,8 @@
 /// Based on scientific research on how different beverages hydrate the body
 library;
 
+import 'package:flutter/material.dart';
+
 enum BeverageType {
   water,
   sparklingWater,
@@ -97,6 +99,34 @@ extension BeverageTypeExtension on BeverageType {
   String get iconName => beverageIcons[this] ?? 'local_drink';
   String? get tip => beverageTips[this];
   bool get hasWarning => bhi < 0.7;
+
+  /// Get Material Icon for this beverage type
+  IconData get icon {
+    switch (this) {
+      case BeverageType.water:
+        return Icons.water_drop;
+      case BeverageType.sparklingWater:
+        return Icons.bubble_chart;
+      case BeverageType.milk:
+        return Icons.local_cafe;
+      case BeverageType.coconutWater:
+        return Icons.eco;
+      case BeverageType.tea:
+        return Icons.emoji_food_beverage;
+      case BeverageType.coffee:
+        return Icons.coffee;
+      case BeverageType.juice:
+        return Icons.local_bar;
+      case BeverageType.soda:
+        return Icons.local_drink;
+      case BeverageType.alcohol:
+        return Icons.wine_bar;
+      case BeverageType.energyDrink:
+        return Icons.bolt;
+      case BeverageType.other:
+        return Icons.local_drink;
+    }
+  }
 
   /// Calculate actual hydration value
   int calculateHydration(int volumeMl) {

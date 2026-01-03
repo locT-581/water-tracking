@@ -1,6 +1,7 @@
 import 'dart:async';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import '../models/user_model.dart';
+import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 
 /// Remote data source for authentication
@@ -21,12 +22,12 @@ abstract class AuthRemoteDataSource {
 
 /// Implementation of AuthRemoteDataSource
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
-  final SupabaseClient _supabase;
+  final supabase.SupabaseClient _supabase;
   final StreamController<User?> _authStateController = StreamController<User?>.broadcast();
 
   AuthRemoteDataSourceImpl({
-    SupabaseClient? supabase,
-  }) : _supabase = supabase ?? Supabase.instance.client {
+    supabase.SupabaseClient? client,
+  }) : _supabase = client ?? supabase.Supabase.instance.client {
     // Listen to Supabase auth state changes
     _supabase.auth.onAuthStateChange.listen((data) {
       final user = data.session?.user;
@@ -55,7 +56,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<UserModel> signInWithGoogle() async {
     try {
       final response = await _supabase.auth.signInWithOAuth(
-        OAuthProvider.google,
+        supabase.OAuthProvider.google,
         redirectTo: 'io.supabase.smarthydro://login-callback/',
       );
 
@@ -64,7 +65,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
 
       // Wait for auth state change
-      await Future.delayed(const Duration(seconds: 2));
+      await Future<void>.delayed(const Duration(seconds: 2));
 
       final user = _supabase.auth.currentUser;
       if (user == null) {
@@ -72,9 +73,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
 
       return UserModel.fromSupabase(user);
-    } on AuthException catch (e) {
+    } on supabase.AuthException catch (e) {
       throw AuthExceptions.fromSupabaseException(e);
     } catch (e) {
+      if (e is AuthException) rethrow;
       throw AuthExceptions.unknown(e);
     }
   }
@@ -83,7 +85,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<UserModel> signInWithApple() async {
     try {
       final response = await _supabase.auth.signInWithOAuth(
-        OAuthProvider.apple,
+        supabase.OAuthProvider.apple,
         redirectTo: 'io.supabase.smarthydro://login-callback/',
       );
 
@@ -92,7 +94,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
 
       // Wait for auth state change
-      await Future.delayed(const Duration(seconds: 2));
+      await Future<void>.delayed(const Duration(seconds: 2));
 
       final user = _supabase.auth.currentUser;
       if (user == null) {
@@ -100,9 +102,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
 
       return UserModel.fromSupabase(user);
-    } on AuthException catch (e) {
+    } on supabase.AuthException catch (e) {
       throw AuthExceptions.fromSupabaseException(e);
     } catch (e) {
+      if (e is AuthException) rethrow;
       throw AuthExceptions.unknown(e);
     }
   }
@@ -121,9 +124,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
 
       return UserModel.fromSupabase(user);
-    } on AuthException catch (e) {
+    } on supabase.AuthException catch (e) {
       throw AuthExceptions.fromSupabaseException(e);
     } catch (e) {
+      if (e is AuthException) rethrow;
       throw AuthExceptions.unknown(e);
     }
   }
@@ -143,16 +147,14 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       final user = response.user;
       if (user == null) {
-        throw AuthException(
-          message: 'Failed to create user',
-          code: 'signup-failed',
-        );
+        throw AuthExceptions.unknown('Failed to create user');
       }
 
       return UserModel.fromSupabase(user);
-    } on AuthException catch (e) {
+    } on supabase.AuthException catch (e) {
       throw AuthExceptions.fromSupabaseException(e);
     } catch (e) {
+      if (e is AuthException) rethrow;
       throw AuthExceptions.unknown(e);
     }
   }
@@ -161,9 +163,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<void> signOut() async {
     try {
       await _supabase.auth.signOut();
-    } on AuthException catch (e) {
+    } on supabase.AuthException catch (e) {
       throw AuthExceptions.fromSupabaseException(e);
     } catch (e) {
+      if (e is AuthException) rethrow;
       throw AuthExceptions.unknown(e);
     }
   }
@@ -175,9 +178,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         email,
         redirectTo: 'io.supabase.smarthydro://reset-password/',
       );
-    } on AuthException catch (e) {
+    } on supabase.AuthException catch (e) {
       throw AuthExceptions.fromSupabaseException(e);
     } catch (e) {
+      if (e is AuthException) rethrow;
       throw AuthExceptions.unknown(e);
     }
   }
@@ -186,7 +190,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<UserModel> updateUserMetadata(Map<String, dynamic> metadata) async {
     try {
       final response = await _supabase.auth.updateUser(
-        UserAttributes(data: metadata),
+        supabase.UserAttributes(data: metadata),
       );
 
       final user = response.user;
@@ -195,9 +199,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
 
       return UserModel.fromSupabase(user);
-    } on AuthException catch (e) {
+    } on supabase.AuthException catch (e) {
       throw AuthExceptions.fromSupabaseException(e);
     } catch (e) {
+      if (e is AuthException) rethrow;
       throw AuthExceptions.unknown(e);
     }
   }
@@ -206,4 +211,3 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     _authStateController.close();
   }
 }
-

@@ -40,10 +40,14 @@ class WeatherService {
   final Dio _dio;
   WeatherData? _cachedData;
 
-  WeatherService({Dio? dio}) : _dio = dio ?? Dio();
+  WeatherService({Dio? dio}) : _dio = dio ?? Dio(BaseOptions(
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 10),
+  ));
 
   /// Get current weather data
   /// Returns cached data if still fresh, otherwise fetches new data
+  /// Has a timeout to prevent hanging forever
   Future<WeatherData?> getCurrentWeather() async {
     // Return cached data if still fresh
     if (_cachedData != null && _cachedData!.isFresh) {
@@ -51,25 +55,40 @@ class WeatherService {
     }
 
     try {
-      // Get current position
-      final position = await _getCurrentPosition();
-      if (position == null) return null;
-
-      // Fetch weather data
-      final data = await _fetchWeatherData(
-        latitude: position.latitude,
-        longitude: position.longitude,
-      );
-
-      _cachedData = data;
-      return data;
+      // Add timeout to prevent hanging forever
+      return await _fetchCurrentWeatherWithTimeout();
     } catch (e) {
       // Return cached data even if stale, better than nothing
       return _cachedData;
     }
   }
+  
+  Future<WeatherData?> _fetchCurrentWeatherWithTimeout() async {
+    return await Future.any([
+      _fetchCurrentWeatherInternal(),
+      Future.delayed(const Duration(seconds: 10), () => _cachedData),
+    ]);
+  }
+  
+  Future<WeatherData?> _fetchCurrentWeatherInternal() async {
+    // Get current position
+    final position = await _getCurrentPosition();
+    if (position == null) return _cachedData;
 
-  /// Get current position with permission handling
+    // Fetch weather data
+    final data = await _fetchWeatherData(
+      latitude: position.latitude,
+      longitude: position.longitude,
+    );
+
+    if (data != null) {
+      _cachedData = data;
+    }
+    return data ?? _cachedData;
+  }
+
+  /// Get current position - only checks permission, does NOT request
+  /// Permission should be requested via LocationPermissionService before calling this
   Future<Position?> _getCurrentPosition() async {
     // Check if location services are enabled
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -77,23 +96,23 @@ class WeatherService {
       return null;
     }
 
-    // Check permission
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return null;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
+    // Only CHECK permission, do NOT request (to avoid concurrent request errors)
+    final permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
       return null;
     }
 
-    // Get position
-    return await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.low,
-    );
+    // Get position with timeout
+    try {
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.low,
+        timeLimit: const Duration(seconds: 10),
+      );
+    } catch (e) {
+      // Handle any position errors gracefully (timeout, location unavailable, etc.)
+      return null;
+    }
   }
 
   /// Fetch weather data from OpenWeatherMap API

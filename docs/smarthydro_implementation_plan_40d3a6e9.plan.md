@@ -4,20 +4,20 @@ overview: "Implementation plan chi tiet cho du an SmartHydro - ung dung theo doi
 todos:
   - id: phase0-setup
     content: "Phase 0: Foundation and Setup (Infrastructure, Supabase, CI/CD, Design)"
-    status: in_progress
+    status: completed
   - id: phase1-onboarding
     content: "Phase 1.1-1.3: Auth and Onboarding Flow"
-    status: pending
+    status: completed
     dependencies:
       - phase0-setup
   - id: phase1-algorithm
     content: "Phase 1.4-1.6: Core Algorithm (Hydration Engine, Weather, Daily Goals)"
-    status: pending
+    status: completed
     dependencies:
       - phase1-onboarding
   - id: phase1-logging
     content: "Phase 1.7-1.9: Smart Logging with BHI and Offline Sync"
-    status: pending
+    status: completed
     dependencies:
       - phase1-algorithm
   - id: phase1-notifications

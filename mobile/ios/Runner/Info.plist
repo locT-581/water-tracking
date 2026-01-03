@@ -45,5 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Location Permission -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SmartHydro cần quyền vị trí để lấy thông tin thời tiết và điều chỉnh mục tiêu nước uống phù hợp với bạn.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>SmartHydro cần quyền vị trí để lấy thông tin thời tiết và điều chỉnh mục tiêu nước uống phù hợp với bạn.</string>
 </dict>
 </plist>

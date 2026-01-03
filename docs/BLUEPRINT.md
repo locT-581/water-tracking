@@ -130,10 +130,17 @@ Xem chi tiết ở file [VISUAL_DESIGN](VISUAL_DESIGN.md)
 ## 9. User Roles & Flow Principles
 
 * **Roles:**
-* *User (Mobile):* Người uống nước.
-* *Editor (Web):* Người viết bài blog.
-* *Admin (Supabase):* Quản lý hệ thống.
+  * *User (Mobile):* Người uống nước.
+  * *Guest User:* Người dùng thử, chưa đăng nhập, data lưu local.
+  * *Editor (Web):* Người viết bài blog.
+  * *Admin (Supabase):* Quản lý hệ thống.
 
+* **Guest Mode Flow:**
+  1. Splash Screen → Login Screen
+  2. User chọn "Dùng thử ngay" (không bắt buộc đăng nhập)
+  3. Onboarding (thu thập info cơ bản)
+  4. Home Screen với banner nhắc liên kết tài khoản
+  5. Sau 3 ngày: Dialog nhắc nhở backup data
 
 * **Golden Flow Principle:** "1-Tap Logging". Giảm thiểu số bước để log nước xuống mức tối thiểu. Từ lúc mở khóa màn hình đến lúc log xong không quá 3 giây.
 

@@ -81,6 +81,40 @@ Hệ thống phải thu thập các chỉ số đầu vào để khởi chạy t
 * Hiển thị "Mục tiêu cơ bản trong ngày" ngay lập tức sau khi hoàn thành onboarding
 * Animation giải thích cách tính mục tiêu (educational)
 
+#### 3.1.3. Guest Mode (Chế độ Dùng thử)
+
+**Mục đích:** Cho phép người dùng trải nghiệm app ngay lập tức mà không cần đăng nhập, giảm friction khi onboard.
+
+| Tính năng | Guest Mode | Signed-in User |
+|-----------|------------|----------------|
+| Log nước | ✅ Lưu local | ✅ Sync cloud |
+| Xem thống kê | ✅ | ✅ |
+| Gamification | ✅ | ✅ |
+| Sync giữa devices | ❌ | ✅ |
+| Backup dữ liệu | ❌ | ✅ |
+| Streak recovery | ❌ | ✅ |
+
+**Flow Guest Mode:**
+1. User chọn "Dùng thử ngay" ở màn Login
+2. Hoàn thành Onboarding (lưu local)
+3. Sử dụng app bình thường, data lưu local bằng Isar DB
+4. Sau 3 ngày, hiện nhắc nhở liên kết tài khoản (không ép buộc)
+5. Khi liên kết: merge data local → cloud
+
+**Điều kiện hiển thị nhắc nhở liên kết:**
+* Sau 3 ngày sử dụng Guest Mode
+* Chưa từng dismiss reminder
+* Có ít nhất 5 logs nước (có data đáng giá)
+
+**Data Migration khi Link Account:**
+```
+Guest Local Data → Server
+├── water_logs (INSERT nếu chưa tồn tại)
+├── daily_goals (MERGE với server data)
+├── streaks (Tính toán lại từ logs)
+└── buddy_status (Giữ nguyên progress)
+```
+
 ---
 
 ### 3.2. Module Thuật toán cốt lõi & Mục tiêu động (Core Algorithm)

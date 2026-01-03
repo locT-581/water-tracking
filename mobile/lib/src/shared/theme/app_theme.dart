@@ -111,11 +111,6 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 8,
       ),
-      bottomAppBarTheme: const BottomAppBarThemeData(
-        color: Colors.white,
-        elevation: 8,
-        shape: CircularNotchedRectangle(),
-      ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.deepOcean,
         contentTextStyle: const TextStyle(color: Colors.white),
@@ -210,11 +205,6 @@ class AppTheme {
         shape: const CircleBorder(),
         // Neon glow effect for dark mode
         splashColor: AppColors.hydroStart.withOpacity(0.3),
-      ),
-      bottomAppBarTheme: const BottomAppBarThemeData(
-        color: AppColors.darkSurface,
-        elevation: 8,
-        shape: CircularNotchedRectangle(),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.darkSurface,

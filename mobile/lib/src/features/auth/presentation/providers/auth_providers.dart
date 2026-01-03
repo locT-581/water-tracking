@@ -1,21 +1,23 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
+import '../../../../core/services/guest_mode_service.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
+import 'onboarding_providers.dart';
 
 // ============== DATA SOURCE PROVIDERS ==============
 
 /// Supabase client provider
-final supabaseClientProvider = Provider<SupabaseClient>((ref) {
-  return Supabase.instance.client;
+final supabaseClientProvider = Provider<supabase.SupabaseClient>((ref) {
+  return supabase.Supabase.instance.client;
 });
 
 /// Auth remote data source provider
 final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
-  final supabase = ref.watch(supabaseClientProvider);
-  return AuthRemoteDataSourceImpl(supabase: supabase);
+  final client = ref.watch(supabaseClientProvider);
+  return AuthRemoteDataSourceImpl(client: client);
 });
 
 // ============== REPOSITORY PROVIDERS ==============
@@ -52,9 +54,22 @@ final isAuthenticatedProvider = Provider<bool>((ref) {
 });
 
 /// Has completed onboarding provider
+/// Checks both authenticated users and guest users (local storage)
 final hasCompletedOnboardingProvider = Provider<bool>((ref) {
-  final userAsync = ref.watch(currentUserProvider);
+  // Check if in guest mode - use local storage
+  final isGuestMode = ref.watch(guestModeNotifierProvider);
+  if (isGuestMode) {
+    // For guest mode, check local onboarding completion
+    try {
+      final onboardingService = ref.watch(onboardingServiceProvider);
+      return onboardingService.hasCompletedOnboarding;
+    } catch (_) {
+      return false;
+    }
+  }
   
+  // For authenticated users, check user profile
+  final userAsync = ref.watch(currentUserProvider);
   return userAsync.when(
     data: (user) => user?.hasCompletedOnboarding ?? false,
     loading: () => false,

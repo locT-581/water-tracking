@@ -3,29 +3,50 @@
 /// Sử dụng Riverpod để quản lý state của mascots
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/models/mascot_models.dart';
 import '../../domain/services/mascot_registry.dart';
 
+/// Key để lưu active mascot trong SharedPreferences
+const String _activeMascotKey = 'active_mascot';
+
+/// Provider cho SharedPreferences (phải được override trong main.dart)
+final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
+  throw UnimplementedError('Must be overridden in main.dart');
+});
+
 /// Provider cho active mascot (mascot đang được sử dụng)
 final activeMascotProvider = StateNotifierProvider<ActiveMascotNotifier, MascotType>((ref) {
-  return ActiveMascotNotifier();
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return ActiveMascotNotifier(prefs);
 });
 
 class ActiveMascotNotifier extends StateNotifier<MascotType> {
-  ActiveMascotNotifier() : super(MascotType.aquaAxo) {
+  final SharedPreferences _prefs;
+  
+  ActiveMascotNotifier(this._prefs) : super(MascotType.aquaAxo) {
     _loadFromStorage();
   }
   
-  Future<void> _loadFromStorage() async {
-    // TODO: Load từ Supabase hoặc SharedPreferences
-    // For now, use default
-    state = MascotType.aquaAxo;
+  void _loadFromStorage() {
+    final savedMascot = _prefs.getString(_activeMascotKey);
+    if (savedMascot != null) {
+      try {
+        state = MascotType.values.firstWhere(
+          (m) => m.name == savedMascot,
+          orElse: () => MascotType.aquaAxo,
+        );
+      } catch (_) {
+        state = MascotType.aquaAxo;
+      }
+    }
+    // Note: If no saved mascot, it will use the default (aquaAxo)
+    // The mascot will be set when user completes onboarding
   }
   
   Future<void> setActiveMascot(MascotType type) async {
     state = type;
-    // TODO: Save to Supabase
-    // TODO: Analytics event
+    await _prefs.setString(_activeMascotKey, type.name);
   }
 }
 

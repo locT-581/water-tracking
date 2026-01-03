@@ -149,6 +149,37 @@ Chúng ta sử dụng **Gradient** làm chủ đạo để mô phỏng chiều s
 
 Dưới đây là mô tả chi tiết để Designer vẽ UI.
 
+### Màn 0: Login Screen (Đăng nhập / Dùng thử)
+
+Màn hình đầu tiên sau Splash, cho phép người dùng lựa chọn đăng nhập hoặc dùng thử.
+
+* **Background:** Time-based gradient (sáng/chiều/tối)
+* **Center Stage:**
+  * **Puru Classic** mascot nằm giữa màn hình, animation lên xuống nhẹ nhàng
+  * Puru ở trạng thái `hydrated` (70%), vui vẻ chào đón user
+  * Có hiệu ứng glow nhẹ xung quanh
+
+* **Branding:**
+  * Logo text "SmartHydro" bên dưới Puru
+  * Slogan "Hydration tuned to your biology" nhỏ hơn
+
+* **Buttons (từ trên xuống):**
+  1. **"Tiếp tục với Google"** - Nền trắng, chữ Deep Ocean, icon Google
+  2. **"Tiếp tục với Apple"** - Nền Deep Ocean, chữ trắng, icon Apple
+  3. Divider với text "hoặc"
+  4. **"Dùng thử ngay"** - Outlined button, viền trắng mờ, icon Explore
+
+* **Typography:**
+  * App name: 36px, Bold, Nunito, màu trắng
+  * Slogan: 16px, Regular, Inter, màu trắng 90% opacity
+  * Buttons: 16px, SemiBold
+
+* **Terms:** Text nhỏ ở dưới cùng, màu trắng 80% opacity
+
+* **Animation:**
+  * Puru float lên xuống (amplitude: 8px, duration: 3s, ease-in-out)
+  * Buttons fade in khi màn hình load
+
 ### Màn 1: Onboarding (Chào mừng & Thiết lập)
 
 * **Bố cục:** Clean, tối giản. Chỉ có 1 câu hỏi mỗi màn hình.
@@ -269,6 +300,118 @@ Sử dụng cho các bảng thông báo (Modal) hoặc thanh Navigation Bar.
 2. **Confetti:** Khi hoàn thành mục tiêu ngày: Bắn pháo hoa là các bong bóng nước và Puru nhảy lộn vòng.
 3. **Loading:** Không dùng vòng quay tròn. Dùng hình ảnh Puru đang uống nước ừng ực.
 4. **Pull-to-refresh:** Khi kéo xuống, một giọt nước kéo dài ra ở trên đỉnh, đến độ căng nhất định thì đứt và rơi xuống thành nội dung mới.
+
+---
+
+## 7. INTERACTION & ANIMATION GUIDELINES (NGUYÊN TẮC TƯƠNG TÁC)
+
+### 7.1. Triết lý Animation
+
+> **"Fluid, Purposeful, Never Overrated"**  
+> Animation phải phục vụ trải nghiệm, không phải để khoe kỹ thuật.
+
+**Nguyên tắc cốt lõi:**
+- **Có ý nghĩa:** Mỗi animation phải giúp user hiểu context hoặc feedback hành động
+- **Tinh tế:** Prefer subtlety over flashiness - animation nhẹ nhàng, không gây xao nhãng
+- **Nhất quán:** Cùng một action = cùng một animation trong toàn app
+- **Nhanh gọn:** Duration phù hợp, không quá dài khiến user phải chờ
+
+### 7.2. Animation Timing Standards
+
+| Loại Animation | Duration | Curve | Ghi chú |
+|----------------|----------|-------|---------|
+| **Button tap** | 100-150ms | `easeOutCubic` | Subtle scale hoặc opacity change |
+| **Selection change** | 200-250ms | `easeOutCubic` | Smooth transition, không chớp |
+| **Layout size change** | 250-350ms | `easeOutCubic` | Khi content expand/collapse |
+| **Page transition** | 300-400ms | `easeOutCubic` | Slide hoặc fade |
+| **Modal appear** | 300-400ms | `easeOutBack` | Slight overshoot for delight |
+| **Value changes** | 400-600ms | `easeOutCubic` | Counter animation, progress bars |
+| **Celebration** | 1500-3000ms | `elasticOut` | Confetti, achievement unlock |
+
+### 7.3. Feedback Patterns
+
+#### Touch Feedback (Haptic + Visual)
+```
+Tap nhẹ:     HapticFeedback.lightImpact() + Scale(0.98)
+Tap mạnh:    HapticFeedback.mediumImpact() + Scale(0.95)  
+Long press:  HapticFeedback.heavyImpact() + Glow effect
+Selection:   HapticFeedback.selectionClick() + Color transition
+```
+
+#### Visual State Transitions
+- **Unselected → Selected:** Fade gradient in (không dùng color animation để tránh flash)
+- **Loading states:** Shimmer effect hoặc Puru animation
+- **Error states:** Shake animation + đỏ border (không quá aggressive)
+- **Success states:** Check mark với spring animation
+
+### 7.4. Anti-Patterns (TRÁNH)
+
+❌ **Không dùng:**
+- Animation quá dài (> 500ms cho basic interactions)
+- Bounce/elastic quá mạnh khiến UI "nhảy nhót"
+- Nhiều animation chạy đồng thời tranh nhau sự chú ý
+- Color flash khi transition (ví dụ: màu xanh đơn sắc chớp trước gradient)
+- Animation blocking user interaction
+- Parallax effect quá nhiều layer gây rối
+- **Layout jumps:** Content thay đổi kích thước đột ngột (phải dùng AnimatedSize)
+- **Instant repositioning:** Elements nhảy vị trí mà không có transition
+
+✅ **Nên dùng:**
+- `AnimatedOpacity` + `AnimatedScale` cho selection states
+- `TweenAnimationBuilder` cho one-shot animations
+- Staggered animations cho lists (delay mỗi item 50-100ms)
+- Shared element transitions giữa các screen
+- **`AnimatedSize`** cho content thay đổi kích thước (text dài hơn, expand/collapse)
+- **`AnimatedContainer`** cho thay đổi decoration, padding, size
+- **`AnimatedSwitcher`** cho thay đổi child widgets
+
+### 7.5. Smooth Layout Transitions (BẮT BUỘC)
+
+> **"Nothing should jump"** - Mọi thay đổi kích thước phải được animate.
+
+**Nguyên tắc vàng:** Khi content thay đổi kích thước (text dài hơn, image load, expand/collapse), người dùng phải thấy transition mượt mà, không bao giờ "nhảy" đột ngột.
+
+#### Implementation Patterns:
+
+```dart
+// ✅ ĐÚNG: Content expand với animation
+AnimatedSize(
+  duration: const Duration(milliseconds: 300),
+  curve: Curves.easeOutCubic,
+  child: selectedItem != null 
+      ? ItemPreview(item: selectedItem!)
+      : const SizedBox.shrink(),
+)
+
+// ❌ SAI: Content expand không có animation (gây layout jump)
+if (selectedItem != null)
+  ItemPreview(item: selectedItem!)
+```
+
+#### Khi nào sử dụng:
+- **Text có độ dài thay đổi:** Quotes, descriptions, error messages
+- **Conditional content:** Hiển thị/ẩn widgets dựa trên state
+- **List items:** Expand/collapse details
+- **Image loading:** Placeholder → actual image
+- **Form validation:** Error messages xuất hiện
+
+#### Timing cho Layout Changes:
+- **Small changes** (< 50px): 200-250ms
+- **Medium changes** (50-150px): 250-350ms  
+- **Large changes** (> 150px): 300-400ms
+
+### 7.6. Performance Guidelines
+
+1. **Tránh rebuild không cần thiết:** Dùng `const` widgets, `AnimatedBuilder` thay vì `setState`
+2. **60fps target:** Animation không được drop frames
+3. **Lazy animation:** Chỉ animate những gì visible trên viewport
+4. **Hardware acceleration:** Sử dụng transform thay vì thay đổi layout properties
+
+### 7.7. Accessibility
+
+- Animation phải respect `MediaQuery.disableAnimations`
+- Cung cấp `reducedMotion` variant cho users nhạy cảm
+- Đảm bảo content vẫn accessible khi animation đang chạy
 
 ---
 

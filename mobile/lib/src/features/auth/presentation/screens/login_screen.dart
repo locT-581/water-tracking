@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/theme/app_gradients.dart';
 import '../../../../shared/theme/app_text_styles.dart';
+import '../../../../core/services/guest_mode_service.dart';
 import '../../../../app/router.dart';
+import '../../../gamification/presentation/widgets/puru/puru_widget.dart';
 import '../providers/auth_providers.dart';
+import '../providers/onboarding_providers.dart';
 
 /// Login Screen - First screen users see
 /// 
-/// Provides Google and Apple sign-in options
+/// Provides Google, Apple sign-in options and Guest Mode
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -19,7 +22,40 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _puruAnimController;
+
+  @override
+  void initState() {
+    super.initState();
+    _puruAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _puruAnimController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _continueAsGuest() async {
+    final guestModeNotifier = ref.read(guestModeNotifierProvider.notifier);
+    final onboardingService = ref.read(onboardingServiceProvider);
+    
+    // Clear any existing onboarding data for fresh start
+    await onboardingService.clearProfile();
+    
+    // Enable guest mode
+    await guestModeNotifier.enableGuestMode();
+    
+    if (mounted) {
+      context.go(AppRoutes.onboarding);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authController = ref.watch(authControllerProvider);
@@ -50,31 +86,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               children: [
                 const Spacer(),
                 
-                // Logo with animated gradient
+                // Puru Mascot with animation
                 Hero(
-                  tag: 'app_logo',
-                  child: Container(
-                    width: 140,
-                    height: 140,
-                    decoration: BoxDecoration(
-                      gradient: AppGradients.primary,
-                      shape: BoxShape.circle,
-                      boxShadow: GradientDecoration.coloredShadow(
-                        color: AppColors.hydroEnd,
-                        blur: 30,
-                        spread: 5,
-                        opacity: 0.4,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.water_drop_rounded,
-                      size: 70,
-                      color: Colors.white,
-                    ),
+                  tag: 'app_mascot',
+                  child: AnimatedBuilder(
+                    animation: _puruAnimController,
+                    builder: (context, child) {
+                      return Transform.translate(
+                        offset: Offset(
+                          0,
+                          -8 * _puruAnimController.value,
+                        ),
+                        child: const PuruWidget(
+                          size: 160,
+                          hydrationPercent: 0.7,
+                          showMessage: false,
+                          enableEyeTracking: true,
+                          showGlowEffect: true,
+                        ),
+                      );
+                    },
                   ),
                 ),
                 
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
                 
                 // App name
                 Text(
@@ -117,7 +152,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   foregroundColor: AppColors.deepOcean,
                 ),
                 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 
                 // Apple Sign In
                 _SocialButton(
@@ -132,7 +167,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   foregroundColor: Colors.white,
                 ),
                 
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
+                
+                // Divider with "or"
+                Row(
+                  children: [
+                    Expanded(
+                      child: Divider(
+                        color: Colors.white.withOpacity(0.3),
+                        thickness: 1,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'auth.or'.tr(),
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.7),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Divider(
+                        color: Colors.white.withOpacity(0.3),
+                        thickness: 1,
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Guest Mode Button
+                _GuestModeButton(
+                  onPressed: authController.isLoading ? null : _continueAsGuest,
+                ),
+                
+                const SizedBox(height: 32),
                 
                 // Terms
                 Text(
@@ -202,3 +274,48 @@ class _SocialButton extends StatelessWidget {
   }
 }
 
+/// Guest mode button with special styling
+class _GuestModeButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+
+  const _GuestModeButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.white,
+          side: BorderSide(
+            color: Colors.white.withOpacity(0.5),
+            width: 2,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(50),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.explore_outlined,
+              size: 24,
+              color: Colors.white.withOpacity(0.9),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'auth.try_without_account'.tr(),
+              style: AppTextStyles.button(
+                color: Colors.white.withOpacity(0.9),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

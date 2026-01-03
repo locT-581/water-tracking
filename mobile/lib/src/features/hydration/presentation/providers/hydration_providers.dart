@@ -1,13 +1,53 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:isar/isar.dart';
 
+import '../../data/repositories/daily_goal_repository.dart';
+import '../../data/repositories/water_log_repository.dart';
 import '../../domain/entities/daily_goal.dart';
 import '../../domain/entities/water_log.dart';
 import '../../domain/services/hydration_calculator.dart';
 import '../../../../core/constants/bhi_constants.dart';
+import '../../../../core/providers/weather_providers.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../auth/presentation/providers/onboarding_providers.dart';
 
 /// Hydration calculator provider (singleton)
 final hydrationCalculatorProvider = Provider<HydrationCalculator>((ref) {
   return const HydrationCalculator();
+});
+
+/// Daily Goal Repository provider
+final dailyGoalRepositoryProvider = Provider<DailyGoalRepository>((ref) {
+  final isar = ref.watch(isarProvider);
+  final onboardingService = ref.watch(onboardingServiceProvider);
+  final calculator = ref.watch(hydrationCalculatorProvider);
+  final weatherService = ref.watch(weatherServiceProvider);
+  
+  // Get user ID if logged in, otherwise use 'guest'
+  final userAsync = ref.watch(currentUserProvider);
+  final userId = userAsync.valueOrNull?.id;
+
+  return DailyGoalRepository(
+    isar: isar,
+    onboardingService: onboardingService,
+    calculator: calculator,
+    weatherService: weatherService,
+    userId: userId,
+  );
+});
+
+/// Water Log Repository provider
+final waterLogRepositoryProvider = Provider<WaterLogRepository>((ref) {
+  final isar = ref.watch(isarProvider);
+  
+  // Get user ID if logged in, otherwise use 'guest'
+  final userAsync = ref.watch(currentUserProvider);
+  final userId = userAsync.valueOrNull?.id;
+
+  return WaterLogRepository(
+    isar: isar,
+    userId: userId,
+  );
 });
 
 /// Today's daily goal provider
@@ -70,7 +110,6 @@ final hydrationStatusProvider = Provider<HydrationStatus>((ref) {
 
 /// Today's goal notifier
 class TodayGoalNotifier extends StateNotifier<AsyncValue<DailyGoal>> {
-  // ignore: unused_field
   final Ref _ref;
 
   TodayGoalNotifier(this._ref) : super(const AsyncValue.loading()) {
@@ -79,25 +118,11 @@ class TodayGoalNotifier extends StateNotifier<AsyncValue<DailyGoal>> {
 
   Future<void> _loadTodayGoal() async {
     try {
-      // TODO: Load from local database or create new goal
-      // For now, create a mock goal
-      final now = DateTime.now();
-      final goal = DailyGoal(
-        goalId: 'today-${now.year}${now.month}${now.day}',
-        userId: 'mock-user',
-        date: DateTime(now.year, now.month, now.day),
-        baseGoalMl: 2500,
-        weatherAdjustmentMl: 250,
-        activityAdjustmentMl: 0,
-        biologyAdjustmentMl: 0,
-        temperatureC: 32,
-        humidityPercent: 65,
-        achievedMl: 0,
-        isCompleted: false,
-        createdAt: now,
-        updatedAt: now,
-      );
-
+      state = const AsyncValue.loading();
+      
+      final repository = _ref.read(dailyGoalRepositoryProvider);
+      final goal = await repository.getTodayGoal();
+      
       state = AsyncValue.data(goal);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -108,27 +133,25 @@ class TodayGoalNotifier extends StateNotifier<AsyncValue<DailyGoal>> {
   void addHydration(int hydrationMl) {
     state.whenData((goal) {
       state = AsyncValue.data(goal.addHydration(hydrationMl));
+      
+      // Also update in database async
+      _ref.read(dailyGoalRepositoryProvider).addHydration(hydrationMl);
     });
   }
 
   /// Update weather adjustment
-  void updateWeatherAdjustment({
-    required int adjustmentMl,
-    double? temperature,
-    double? humidity,
-  }) {
-    state.whenData((goal) {
-      state = AsyncValue.data(goal.updateWeatherAdjustment(
-        adjustmentMl: adjustmentMl,
-        temperature: temperature,
-        humidity: humidity,
-      ));
-    });
+  Future<void> refreshWeatherAdjustment() async {
+    try {
+      final repository = _ref.read(dailyGoalRepositoryProvider);
+      final updated = await repository.refreshWeatherAdjustment();
+      state = AsyncValue.data(updated);
+    } catch (_) {
+      // Keep current state
+    }
   }
 
   /// Refresh today's goal
   Future<void> refresh() async {
-    state = const AsyncValue.loading();
     await _loadTodayGoal();
   }
 }
@@ -136,6 +159,9 @@ class TodayGoalNotifier extends StateNotifier<AsyncValue<DailyGoal>> {
 /// Today's logs notifier
 class TodayLogsNotifier extends StateNotifier<AsyncValue<List<WaterLog>>> {
   final Ref _ref;
+  
+  // Cache logs in memory for quick access
+  List<WaterLog> _cachedLogs = [];
 
   TodayLogsNotifier(this._ref) : super(const AsyncValue.loading()) {
     _loadTodayLogs();
@@ -143,9 +169,9 @@ class TodayLogsNotifier extends StateNotifier<AsyncValue<List<WaterLog>>> {
 
   Future<void> _loadTodayLogs() async {
     try {
-      // TODO: Load from local database
-      // For now, return empty list
-      state = const AsyncValue.data([]);
+      final repository = _ref.read(waterLogRepositoryProvider);
+      _cachedLogs = await repository.getTodayLogs();
+      state = AsyncValue.data(List.from(_cachedLogs));
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -156,36 +182,58 @@ class TodayLogsNotifier extends StateNotifier<AsyncValue<List<WaterLog>>> {
     required BeverageType beverageType,
     required int volumeMl,
   }) async {
-    final log = WaterLog.create(
-      logId: DateTime.now().millisecondsSinceEpoch.toString(),
-      userId: 'mock-user',
-      beverageType: beverageType,
-      volumeMl: volumeMl,
-    );
+    try {
+      final repository = _ref.read(waterLogRepositoryProvider);
+      
+      // Create log in database
+      final log = await repository.createLog(
+        beverageType: beverageType,
+        volumeMl: volumeMl,
+      );
 
-    state.whenData((logs) {
-      state = AsyncValue.data([...logs, log]);
+      // Update cache and state
+      _cachedLogs.add(log);
+      state = AsyncValue.data(List.from(_cachedLogs));
 
       // Update today's goal achieved amount
       _ref.read(todayGoalProvider.notifier).addHydration(log.hydrationMl);
-    });
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
   }
 
   /// Remove a log (undo)
-  void removeLog(String logId) {
-    state.whenData((logs) {
-      final logToRemove = logs.firstWhere((l) => l.logId == logId);
-      state = AsyncValue.data(logs.where((l) => l.logId != logId).toList());
+  Future<void> removeLog(String logId) async {
+    final index = _cachedLogs.indexWhere((l) => l.logId == logId);
+    if (index != -1) {
+      final logToRemove = _cachedLogs[index];
+      
+      // Remove from database
+      final repository = _ref.read(waterLogRepositoryProvider);
+      await repository.deleteLog(logId);
+
+      // Update cache and state
+      _cachedLogs.removeAt(index);
+      state = AsyncValue.data(List.from(_cachedLogs));
 
       // Subtract from today's goal
       _ref.read(todayGoalProvider.notifier).addHydration(-logToRemove.hydrationMl);
-    });
+    }
+  }
+
+  /// Get last log for undo
+  WaterLog? getLastLog() {
+    return _cachedLogs.isNotEmpty ? _cachedLogs.last : null;
   }
 
   /// Refresh today's logs
   Future<void> refresh() async {
-    state = const AsyncValue.loading();
     await _loadTodayLogs();
   }
 }
 
+/// Isar database provider
+final isarProvider = Provider<Isar>((ref) {
+  throw UnimplementedError('Isar must be initialized in main.dart');
+});
